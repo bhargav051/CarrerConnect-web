@@ -8,6 +8,7 @@ import { BASE_URL } from "../utils/constants";
 const Login = () => {
   const [emailId, setEmailId] = useState("mj@gmail.com");
   const [password, setpassword] = useState("Michael@123");
+  const [error, setError] = useState("");
   const dispatch = useDispatch();  // dispatch an action to add data to your redux store
   const navigate = useNavigate();
 
@@ -21,7 +22,7 @@ const Login = () => {
       dispatch(addUser(res.data.data));
       return navigate("/");
     } catch (err) {
-      console.log("Error : ", err);
+      setError(err?.response?.data || "Something went wrong !!");
     }
   }
 
@@ -49,6 +50,7 @@ const Login = () => {
               onChange={(e) => setpassword(e.target.value)} />
           </fieldset>
         </div>
+        <p className="text-red-500">{error}</p>
         <div className="card-actions justify-center">
           <button className="btn btn-primary" onClick={handleLogin}>Login</button>
         </div>
