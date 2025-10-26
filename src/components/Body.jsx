@@ -19,7 +19,6 @@ const Body = () => {
       const res = await axios.get(BASE_URL + "/profile/view", {
         withCredentials: true
       });
-      console.log(res);
       dispatch(addUser(res.data));  // update the redux store
     } catch (err) {
       if(err.status === 401 ) {
