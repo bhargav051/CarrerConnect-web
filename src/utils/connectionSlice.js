@@ -10,10 +10,13 @@ const connectionSlice = createSlice({
         removeConnections: (state, action) => {
             const newArray = state.filter((conn) => conn._id != action.payload);
             return newArray;
+        },
+        clearConnections: (state, action) => {
+            return null;
         }
     },
 });
 
-export const { addConnections, removeConnections } = connectionSlice.actions;
+export const { addConnections, removeConnections, clearConnections } = connectionSlice.actions;
 
 export default connectionSlice.reducer;
