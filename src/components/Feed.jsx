@@ -1,37 +1,77 @@
+import { useEffect, useState } from "react";
 import axios from "axios";
 import { BASE_URL } from "../utils/constants";
-import { useDispatch, useSelector } from "react-redux";
-import { useEffect } from "react";
-import { addFeed } from "../utils/feedSlice";
+import { useSelector, useDispatch } from "react-redux";
+import { addFeed, removeUserFromFeed } from "../utils/feedSlice";
 import UserCard from "./UserCard";
 
 const Feed = () => {
-    const feed = useSelector((store) => store.feed);   // read the feed
-    const dispatch = useDispatch();
+  const dispatch = useDispatch();
+  const feed = useSelector((state) => state.feed);
+  const [loading, setLoading] = useState(false);
+  const [nextCursor, setNextCursor] = useState(null);
+  const [hasMore, setHasMore] = useState(true);
 
-    const getFeed = async () => {
-        if(feed) return;
-        try {
-            const res = await axios.get(BASE_URL + "/user/feed", {withCredentials: true});
-            console.log("feed", res);
-            dispatch(addFeed(res?.data?.Data)); // add feed to redux store
-        } catch (err) {
-            console.log("Error: " + err);
-        }
+  // 🔹 Fetch feed users (cursor-based pagination)
+  const fetchFeed = async () => {
+    if (loading || !hasMore) return;
+    try {
+      setLoading(true);
+
+      const url = nextCursor
+        ? `${BASE_URL}/user/feed?lastUserId=${nextCursor}&limit=10`
+        : `${BASE_URL}/user/feed?limit=10`;
+
+      const res = await axios.get(url, { withCredentials: true });
+
+      // ✅ Simplified destructuring
+      const users = res.data.data || [];
+      const newCursor = res.data.nextCursor || null;
+
+      if (users.length > 0) {
+        dispatch(addFeed(users));
+        setNextCursor(newCursor);
+      } else {
+        setHasMore(false); // no more users left
+      }
+    } catch (err) {
+      console.log("Error fetching feed:", err);
+    } finally {
+      setLoading(false);
     }
+  };
 
-    useEffect(() => {
-        getFeed();
-    }, []);
+  // 🔹 Initial load
+  useEffect(() => {
+    if (!feed || feed.length === 0) {
+      fetchFeed();
+    }
+  }, []);
 
-    if(!feed)
-        return <h1 className="flex justify-center my-10">Loading...</h1>
+  // 🔹 Fetch next batch automatically when feed empties
+  useEffect(() => {
+    if (feed && feed.length === 0 && hasMore && !loading) {
+      fetchFeed();
+    }
+  }, [feed]);
 
-    if(feed.length<1)
-        return <h1 className="flex justify-center my-10">No new users found</h1>
-    return feed && (<div className="flex justify-center my-10">
-        <UserCard user={feed[0]}/>
-        </div>)
+  const currentUser = feed && feed[0];
+
+  return (
+    <div className="flex justify-center items-center min-h-screen bg-base-200">
+      {currentUser ? (
+        <UserCard user={currentUser} className="max-w-md w-full" />
+      ) : hasMore ? (
+        <h2 className="text-lg font-semibold text-base-content/60">
+          Loading...
+        </h2>
+      ) : (
+        <h2 className="text-lg font-semibold text-base-content/60">
+          No more users to show!
+        </h2>
+      )}
+    </div>
+  );
 };
 
 export default Feed;
