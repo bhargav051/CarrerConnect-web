@@ -112,7 +112,7 @@ const Premium = () => {
     ];
 
     return (
-        <div className="min-h-screen bg-base-200 py-12 px-5 flex justify-center">
+        !isPremiumUser ? <div className="min-h-screen bg-base-200 py-12 px-5 flex justify-center">
             <div className="w-full max-w-5xl">
 
                 <div className="text-center mb-12">
@@ -166,7 +166,7 @@ const Premium = () => {
                 </div>
 
             </div>
-        </div>
+        </div> : <div>You are already a premium user</div>
     );
 };
 
