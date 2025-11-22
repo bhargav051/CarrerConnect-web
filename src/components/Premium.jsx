@@ -1,8 +1,88 @@
 import axios from "axios";
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { BASE_URL } from "../utils/constants";
 
 const Premium = () => {
+    const [isPremiumUser, setIsPremiumUser] = useState(null); 
+    const [loading, setLoading] = useState(true);
+
+    //  AUTO VERIFY WHEN PAGE OPENS
+
+    const verifyPremiumUser = async () => {
+        try {
+            const res = await axios.get(BASE_URL + "/payment/verify", {
+                withCredentials: true,
+            });
+
+            setIsPremiumUser(res.data.ispremium);
+        } catch (err) {
+            console.error("Verification failed", err);
+            setIsPremiumUser(false);
+        }
+        setLoading(false);
+    };
+
+    useEffect(() => {
+        verifyPremiumUser();
+    }, []);
+
+    // RAZORPAY HANDLER CALLBACK
+
+    const handlePaymentSuccess = async () => {
+        await verifyPremiumUser(); // re-check from backend
+        alert("Congratulations! You’re now Premium 🎉");
+    };
+
+    // ------------------------------
+    // 🔥 BUY PLAN
+    // ------------------------------
+    const handleBuyClick = async (planName) => {
+        const order = await axios.post(
+            BASE_URL + "/payment/create",
+            { plan: planName },
+            { withCredentials: true }
+        );
+
+        const { keyId, amount, currency, orderId } = order.data;
+        const { firstName, lastName, email } = order.data.notes;
+
+        const options = {
+            key: keyId,
+            amount,
+            currency,
+            name: "Career Connect",
+            description: "Upgrade to Premium",
+            order_id: orderId,
+            prefill: {
+                name: `${firstName} ${lastName}`,
+                email,
+            },
+            handler: handlePaymentSuccess,
+            theme: { color: "#F37254" },
+        };
+
+        const rzp = new window.Razorpay(options);
+        rzp.open();
+    };
+
+    // UI STARTS HERE
+
+
+    if (loading) return <div className="p-10 text-center">Checking Premium Status...</div>;
+
+    if (isPremiumUser)
+        return (
+            <div className="min-h-screen bg-base-200 py-12 px-5 flex justify-center">
+                <div className="w-full max-w-5xl text-center">
+                    <h2 className="text-3xl font-bold">🎉 You are a Premium User!</h2>
+                    <p className="mt-3 text-lg text-base-content/70">
+                        Enjoy your unlimited features.
+                    </p>
+                </div>
+            </div>
+        );
+
+    // Normal Plans Page
     const plans = [
         {
             name: "Prime",
@@ -31,43 +111,10 @@ const Premium = () => {
         },
     ];
 
-    const handleBuyClick = async (planName) => {
-        const order = await axios.post(BASE_URL + "/payment/create",
-            {
-                plan: planName,
-            },
-            {
-                withCredentials: true,
-            });
-
-        const {keyId, amount, currency, orderId} = order.data;
-        const {firstName, lastName, email} = order.data.notes;
-        // Open Razorpay Checkout
-        const options = {
-            key: keyId, // Replace with your Razorpay key_id
-            amount: amount, // Amount is in currency subunits. Default currency is INR. Hence, 50000 refers to 50000 paise
-            currency: currency,
-            name: 'Career Connect',
-            description: 'Connect with software professionals worldwide',
-            order_id: orderId, // This is the order_id created in the backend
-            prefill: {
-                name: `${firstName} ${lastName}`,
-                email: email,
-            },
-            theme: {
-                color: '#F37254'
-            },
-        };
-
-        const rzp = new window.Razorpay(options);
-        rzp.open();
-    }
-
     return (
         <div className="min-h-screen bg-base-200 py-12 px-5 flex justify-center">
             <div className="w-full max-w-5xl">
 
-                {/* Header */}
                 <div className="text-center mb-12">
                     <h1 className="text-4xl md:text-5xl font-extrabold text-primary">
                         Upgrade Your Experience
@@ -77,30 +124,23 @@ const Premium = () => {
                     </p>
                 </div>
 
-                {/* Plan Cards Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
                     {plans.map((plan, idx) => (
                         <div
                             key={idx}
-                            className={`card border shadow-xl rounded-2xl ${plan.highlight
-                                ? "bg-primary text-primary-content scale-[1.03]"
-                                : "bg-base-100"
-                                }`}
+                            className={`card border shadow-xl rounded-2xl ${
+                                plan.highlight
+                                    ? "bg-primary text-primary-content scale-[1.03]"
+                                    : "bg-base-100"
+                            }`}
                         >
                             <div className="card-body">
-
-                                {/* Title */}
-                                <h2 className="card-title text-3xl font-bold">
-                                    {plan.name}
-                                </h2>
+                                <h2 className="card-title text-3xl font-bold">{plan.name}</h2>
                                 <p className="opacity-80 text-lg">{plan.duration}</p>
-
-                                {/* Price */}
                                 <div className="mt-5 mb-7">
                                     <span className="text-4xl font-extrabold">{plan.price}</span>
                                 </div>
 
-                                {/* Features */}
                                 <ul className="space-y-3 text-lg">
                                     {plan.features.map((f, i) => (
                                         <li key={i} className="flex items-center gap-3">
@@ -110,13 +150,11 @@ const Premium = () => {
                                     ))}
                                 </ul>
 
-                                {/* Button */}
                                 <div className="mt-8">
                                     <button
-                                        className={`btn w-full btn-lg ${plan.highlight
-                                            ? "btn-neutral"
-                                            : "btn-primary"
-                                            }`}
+                                        className={`btn w-full btn-lg ${
+                                            plan.highlight ? "btn-neutral" : "btn-primary"
+                                        }`}
                                         onClick={() => handleBuyClick(plan.name)}
                                     >
                                         Get {plan.name}
@@ -127,10 +165,6 @@ const Premium = () => {
                     ))}
                 </div>
 
-                {/* Bottom Note */}
-                <p className="text-center text-base-content/60 text-sm mt-12">
-                    * Upgrading boosts your visibility and increases your chances of matching.
-                </p>
             </div>
         </div>
     );
