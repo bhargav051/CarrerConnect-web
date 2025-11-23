@@ -12,7 +12,7 @@ const Premium = () => {
             const res = await axios.get(BASE_URL + "/payment/verify", {
                 withCredentials: true,
             });
-            setIsPremiumUser(res.data.ispremium);
+            setIsPremiumUser(res.data.isPremiumUser);
         } catch (err) {
             console.error("Verification failed", err);
             setIsPremiumUser(false);
@@ -25,8 +25,9 @@ const Premium = () => {
     }, []);
 
     const handlePaymentSuccess = async () => {
-        await verifyPremiumUser();
-        alert("Congratulations! You’re now Premium 🎉");
+        setTimeout(async () => {
+            await verifyPremiumUser();
+        }, 4000); // wait 4 seconds for webhook to update DB
     };
 
     const handleBuyClick = async (planName) => {
