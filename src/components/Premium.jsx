@@ -3,17 +3,15 @@ import React, { useEffect, useState } from "react";
 import { BASE_URL } from "../utils/constants";
 
 const Premium = () => {
-    const [isPremiumUser, setIsPremiumUser] = useState(null); 
+    const [isPremiumUser, setIsPremiumUser] = useState(null);
     const [loading, setLoading] = useState(true);
 
-    //  AUTO VERIFY WHEN PAGE OPENS
-
+    // Verify Premium Status
     const verifyPremiumUser = async () => {
         try {
             const res = await axios.get(BASE_URL + "/payment/verify", {
                 withCredentials: true,
             });
-
             setIsPremiumUser(res.data.ispremium);
         } catch (err) {
             console.error("Verification failed", err);
@@ -26,16 +24,11 @@ const Premium = () => {
         verifyPremiumUser();
     }, []);
 
-    // RAZORPAY HANDLER CALLBACK
-
     const handlePaymentSuccess = async () => {
-        await verifyPremiumUser(); // re-check from backend
+        await verifyPremiumUser();
         alert("Congratulations! You’re now Premium 🎉");
     };
 
-    // ------------------------------
-    // 🔥 BUY PLAN
-    // ------------------------------
     const handleBuyClick = async (planName) => {
         const order = await axios.post(
             BASE_URL + "/payment/create",
@@ -65,24 +58,6 @@ const Premium = () => {
         rzp.open();
     };
 
-    // UI STARTS HERE
-
-
-    if (loading) return <div className="p-10 text-center">Checking Premium Status...</div>;
-
-    if (isPremiumUser)
-        return (
-            <div className="min-h-screen bg-base-200 py-12 px-5 flex justify-center">
-                <div className="w-full max-w-5xl text-center">
-                    <h2 className="text-3xl font-bold">🎉 You are a Premium User!</h2>
-                    <p className="mt-3 text-lg text-base-content/70">
-                        Enjoy your unlimited features.
-                    </p>
-                </div>
-            </div>
-        );
-
-    // Normal Plans Page
     const plans = [
         {
             name: "Prime",
@@ -111,8 +86,30 @@ const Premium = () => {
         },
     ];
 
+    // ------------------------
+    // 🔥 FINAL UI RENDER LOGIC
+    // ------------------------
+
+    if (loading) {
+        return <div className="p-10 text-center">Checking Premium Status...</div>;
+    }
+
+    if (isPremiumUser === true) {
+        return (
+            <div className="min-h-screen bg-base-200 py-12 px-5 flex justify-center">
+                <div className="w-full max-w-5xl text-center">
+                    <h2 className="text-3xl font-bold">🎉 You are already a Premium User!</h2>
+                    <p className="mt-3 text-lg text-base-content/70">
+                        Enjoy your unlimited features.
+                    </p>
+                </div>
+            </div>
+        );
+    }
+
+    // NON-PREMIUM → Show Plans
     return (
-        !isPremiumUser ? <div className="min-h-screen bg-base-200 py-12 px-5 flex justify-center">
+        <div className="min-h-screen bg-base-200 py-12 px-5 flex justify-center">
             <div className="w-full max-w-5xl">
 
                 <div className="text-center mb-12">
@@ -166,7 +163,7 @@ const Premium = () => {
                 </div>
 
             </div>
-        </div> : <div>You are already a premium user</div>
+        </div>
     );
 };
 
