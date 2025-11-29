@@ -22,6 +22,9 @@ const Login = () => {
         password
       }, { withCredentials: true });  // to fetch the cookies
       dispatch(addUser(res.data.data));
+      const token = res.data.token;
+      console.log("Login successful, token: ", token);
+      localStorage.setItem('token', token); // store token in localStorage
       return navigate("/");
     } catch (err) {
       setError(err?.response?.data || "Something went wrong !!");
