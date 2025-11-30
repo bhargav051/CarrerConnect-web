@@ -2,6 +2,8 @@ import { useParams } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { useSelector } from "react-redux";
 import { createSocketConnection } from "../utils/socket";
+import axios from "axios";
+import { BASE_URL } from "../utils/constants";
 
 const Chat = () => {
     const { targetUserId } = useParams();
@@ -11,6 +13,39 @@ const Chat = () => {
     const user = useSelector((store) => store.user);
     const userId = user?._id;
     const firstName = user?.firstName;
+    const lastName = user?.lastName;
+    console.log("lastName:", lastName);
+
+    // fetch initial messages
+    const fetchMessages = async () => {
+        try {
+            const response = await axios.get(BASE_URL+ '/chat/'+ targetUserId, { 
+                withCredentials: true 
+            });
+            console.log("Fetched messages:", response.data.chat.messages);
+            const messagesData = response.data.chat.messages || [];
+            const formattedMessages = messagesData.map((msg) => {
+                return {
+                    text: msg.text,
+                    firstName: msg.sender.firstName,
+                    lastName: msg.sender.lastName,
+                    time: new Date(msg.createdAt).toLocaleTimeString([], {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                    }),
+                    id: msg._id,
+                    senderId: msg.sender._id
+                }
+            });
+            setMessages(formattedMessages);
+        } catch (err) {
+            console.log("Error fetching messages:", err);
+        }
+    }
+
+    useEffect(() => {
+        fetchMessages();
+    }, [targetUserId]);
 
     // SEND MESSAGE
     const handleSend = () => {
@@ -19,6 +54,7 @@ const Chat = () => {
         const socket = createSocketConnection();
         socket.emit("sendMessage", {
             firstName,
+            lastName,
             from: userId,
             to: targetUserId,
             text: input.trim(),
@@ -38,13 +74,15 @@ const Chat = () => {
         const socket = createSocketConnection();
         socket.emit("joinChat", { userId, targetUserId });
 
-        socket.on("messageReceived", ({ firstName, text }) => {
+        socket.on("messageReceived", ({ firstName, lastName, from, text }) => {
             setMessages((prev) => [
                 ...prev,
                 {
                     id: Date.now(),
                     text,
                     firstName,
+                    lastName,
+                    senderId: from,
                     time: new Date().toLocaleTimeString([], {
                         hour: "2-digit",
                         minute: "2-digit",
@@ -78,18 +116,12 @@ const Chat = () => {
                 {/* Messages */}
                 <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4 bg-base-200">
                     {messages.map((msg) => (
-                        <div key={msg.id} className="chat chat-start">
-                            {/* Optional avatar circle with initial */}
-                            <div className="chat-image avatar placeholder">
-                                <div className="bg-primary text-primary-content w-10 rounded-full flex items-center justify-center text-sm font-semibold">
-                                    {msg.firstName?.[0] || "U"}
-                                </div>
-                            </div>
+                        <div key={msg.id} className={msg.senderId === userId ? "chat chat-end" : "chat chat-start"}>
 
                             {/* Name and time on top */}
                             <div className="chat-header mb-1">
                                 <span className="text-xs font-semibold text-base-content">
-                                    {msg.firstName || "Unknown"}
+                                    {`${msg.firstName} ${msg.lastName}`}
                                 </span>
                                 <time className="ml-2 text-[10px] text-base-content/60">
                                     {msg.time}
