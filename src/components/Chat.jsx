@@ -6,14 +6,13 @@ import axios from "axios";
 import { BASE_URL } from "../utils/constants";
 
 const Chat = () => {
-    const { targetUserId } = useParams();
-
     // STATE MANAGEMENT
     const [messages, setMessages] = useState([]);
     const [input, setInput] = useState("");
     const [page, setPage] = useState(1);  // track current page for pagination
     const [hasMore, setHasMore] = useState(true); // track if more messages are available
     const [loading, setLoading] = useState(false); // prevent duplicate fetches
+    const [targetUser, setTargetUser] = useState(null);
 
     // REDUX/ USER INFO
     const user = useSelector((store) => store.user);
@@ -26,12 +25,32 @@ const Chat = () => {
     const chatContainerRef = useRef(null); // The scrollable div
     const endOfMessagesRef = useRef(null); // Invisible div at bottom
 
+    const { targetUserId } = useParams();
+
+    const fetchTargetUserDetails = async () => {
+        try {
+            const response = await axios.get(`${BASE_URL}/user/${targetUserId}`, {
+                withCredentials: true
+            });
+            setTargetUser(response.data.data);
+            console.log("Target User Details:", response.data.data);
+        } catch (err) {
+            console.log("Error fetching target user details:", err);
+        }
+    };
+
+    // fetch targetUserId details From backend
+    useEffect(() => {
+        fetchTargetUserDetails();
+    }, [targetUserId]);
+
+
     // FETCH MESSAGES
     const fetchMessages = async (pageNum) => {
         try {
             setLoading(true);
             const response = await axios.get(`${BASE_URL}/chat/${targetUserId}?page=${pageNum}&limit=20`, {
-                withCredentials: true 
+                withCredentials: true
             });
 
             const messagesData = response.data.chat.messages || [];
@@ -53,14 +72,14 @@ const Chat = () => {
             });
 
             // HANDLE STATE UPDATES FOR PAGINATION
-            if(pageNum === 1) {
+            if (pageNum === 1) {
                 // Initial load: Set messages directly
                 setMessages(formattedMessages);
                 // Scroll to bottom immediately
                 setTimeout(() => {
                     endOfMessagesRef.current?.scrollIntoView({ behavior: "auto" });
                 }, 100);
-            }else {
+            } else {
                 // Infinite Scroll load: Prepend older messages to the top
                 setMessages((prev) => [...formattedMessages, ...prev]);
             }
@@ -132,6 +151,18 @@ const Chat = () => {
         const socket = createSocketConnection();
         socket.emit("joinChat", { userId, targetUserId });
 
+        socket.on("userOnline", (onlineUserId) => {
+            if (onlineUserId === targetUserId) {
+                setTargetUser((prev) => ({ ...prev, isOnline: true }));
+            }
+        });
+
+        socket.on("userOffline", (offlineUserId) => {
+            if (offlineUserId === targetUserId) {
+                setTargetUser((prev) => ({ ...prev, isOnline: false, lastSeen: Date.now() }));
+            }
+        });
+
         socket.on("messageReceived", ({ firstName, lastName, from, text }) => {
             setMessages((prev) => [
                 ...prev,
@@ -157,15 +188,23 @@ const Chat = () => {
         <div className="min-h-screen w-full bg-base-200 flex justify-center">
             <div className="mt-6 mb-6 flex h-[80vh] w-full max-w-3xl flex-col rounded-2xl bg-base-100 shadow-xl border border-base-300">
                 {/* Header */}
-                <div className="flex items-center justify-between border-b border-base-300 px-6 py-4">
+                <div className="flex items-center justify-between px-6 py-4 border-b">
                     <div>
-                        <p className="text-xs text-base-content/60">Chatting with</p>
-                        <h1 className="text-xl font-semibold text-primary">User ID: {targetUserId}</h1>
+                        <p className="text-xs text-gray-500">Chatting with</p>
+                        <h2 className="font-semibold text-primary text-xl">
+                            {targetUser ? `${targetUser.firstName} ${targetUser.lastName}` : "Loading..."}
+                        </h2>
+                        <p className="text-xs text-gray-500">
+                            {targetUser?.isOnline ? (
+                                <span className="text-green-600 font-medium">Online</span>
+                            ) : targetUser?.lastSeen ? (
+                                <>Last Seen: {new Date(targetUser.lastSeen).toLocaleString()}</>
+                            ) : ""}
+                        </p>
                     </div>
                 </div>
-
                 {/* Messages Container with Scroll Event */}
-                <div 
+                <div
                     ref={chatContainerRef} // Ref attached here
                     onScroll={handleScroll} // Scroll listener attached here
                     className="flex-1 overflow-y-auto px-4 py-4 space-y-4 bg-base-200"
@@ -184,7 +223,7 @@ const Chat = () => {
                             <div className="chat-bubble chat-bubble-neutral text-sm leading-relaxed">{msg.text}</div>
                         </div>
                     ))}
-                    
+
                     {/* Invisible div to target for auto-scrolling to bottom */}
                     <div ref={endOfMessagesRef} />
                 </div>
