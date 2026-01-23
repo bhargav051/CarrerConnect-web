@@ -17,7 +17,7 @@ const UserCard = ({ user, className = "" }) => {
     } catch (err) {
       console.log("Error: ",err);
     }
-  };
+  }; 
 
   return (
     <div
